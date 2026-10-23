@@ -82,6 +82,13 @@ async fn translate_text_with_client(
     loop {
         let resp_result = client
             .get(url)
+            .header("sec-ch-ua", "\"Google Chrome\";v=\"129\", \"Not=A?Brand\";v=\"8\", \"Chromium\";v=\"129\"")
+            .header("x-browser-year", "2024")
+            .header("x-browser-channel", "stable")
+            .header("sec-ch-ua-arch", "\"x86\"")
+            .header("sec-ch-ua-bitness", "\"64\"")
+            .header("sec-ch-ua-form-factors", "\"Desktop\"")
+            .header("x-browser-copyright", "Copyright 2024 Google LLC. All rights reserved.")
             .query(&[("client", "gtx"), ("sl", sl.as_str()), ("tl", tl.as_str()), ("dt", "t"), ("q", text)])
             .send()
             .await;
