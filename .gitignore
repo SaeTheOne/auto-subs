@@ -32,3 +32,5 @@ node_modules/
 /Adobe-Extension/archive
 .codemaps/
 /AutoSubs-App/src-tauri/gen-resolve-linux/
+/dist
+/build-win.log

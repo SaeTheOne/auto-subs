@@ -370,15 +370,18 @@ fn parse_str(text: &str) -> Result<Settings, String> {
         })?,
     };
 
-    let fallback = match translation.fallback.as_deref() {
-        None => None,
-        Some(raw_fallback) => Provider::parse(raw_fallback).ok_or_else(|| {
-            format!(
-                "unknown translation.fallback {:?}; expected \"google\", \"microsoft\" or null",
-                raw_fallback
-            )
-        })?,
-    };
+    let fallback = translation
+        .fallback
+        .as_deref()
+        .map(|raw_fallback| {
+            Provider::parse(raw_fallback).ok_or_else(|| {
+                format!(
+                    "unknown translation.fallback {:?}; expected \"google\", \"microsoft\" or null",
+                    raw_fallback
+                )
+            })
+        })
+        .transpose()?;
 
     let concurrency = translation.concurrency.unwrap_or(2).clamp(1, 16);
 

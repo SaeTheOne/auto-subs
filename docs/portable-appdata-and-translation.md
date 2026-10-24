@@ -163,3 +163,32 @@ Whisper emits ISO-639-1. `translation_client.rs` maps the exceptions for
 Microsoft: `zh` to `zh-Hans`, `zh-TW`/`yue` to `zh-Hant`, `jw` to `jv`,
 `no`/`nn` to `nb`, `tl` to `fil`, `iw` to `he`, `in` to `id`. Google keeps its
 existing mapping (`jw` to `jv`, `yue` to `zh-TW`).
+
+---
+
+## 3. Building the Windows installer and a portable folder locally
+
+CI (`.github/workflows/build-windows.yml`) builds on a clean `windows-latest`
+runner. A workstation needs four extra knobs, all encoded in
+[scripts/build-windows-local.ps1](../AutoSubs-App/scripts/build-windows-local.ps1):
+
+| Knob | Why |
+| --- | --- |
+| MSVC developer environment (`vcvars64.bat`) | whisper.cpp's Vulkan backend configures a host tool through CMake `ExternalProject`; the nested configure only finds `cl.exe` with the vcvars `INCLUDE`/`LIB`/`PATH` |
+| `CMAKE_GENERATOR=Ninja` | with the Visual Studio generator that same nested project fails with "No CMAKE_C_COMPILER could be found" (CMake 4 + VS 18) |
+| `CL=/FS /utf-8` | the nested try-compile builds C and C++ concurrently; both `cl.exe` processes write one `vc140.pdb` ("fatal error C1041") |
+| short `CARGO_TARGET_DIR` (e.g. `F:\at`) | the nested build path otherwise exceeds `CMAKE_OBJECT_PATH_MAX` (250 chars) |
+
+```powershell
+cd AutoSubs-App
+pwsh -File scripts/build-windows-local.ps1 -TargetDir 'F:\at' -VulkanSdk 'C:\VulkanSDK\1.4.357.0'
+```
+
+Output lands in `dist/` (git-ignored):
+
+* `AutoSubs_<version>_x64-setup.exe` - NSIS installer, **unsigned** (the pinned
+  certificate thumbprint only exists on the release machine);
+* `AutoSubs-<version>-portable-x64/` and its `.zip` - `autosubs.exe`,
+  `ffmpeg.exe`, `resources/`, `config.json`; the app creates `AppData/` next to
+  them on first run.
+
