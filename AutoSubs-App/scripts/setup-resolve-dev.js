@@ -44,6 +44,10 @@ function getResolveScriptsPath() {
 // Placeholders that templates expect to have replaced with absolute paths.
 const RESOURCES_PLACEHOLDER = '[[__AUTOSUBS_RESOURCES_FOLDER__]]';
 const REPO_PATH_PLACEHOLDER = '[[__AUTOSUBS_REPO_PATH__]]';
+// The bridge mailbox lives next to the dev binary
+// (`src-tauri/target/debug/AppData`, see src-tauri/src/app_paths.rs), so the
+// launcher has to point at that folder explicitly.
+const MAILBOX_PLACEHOLDER = '[[__AUTOSUBS_DEV_MAILBOX_DIR__]]';
 
 // Name of the dev launcher (also the label shown in Resolve's Scripts menu).
 const LAUNCHER_NAME = 'AutoSubs (Dev).lua';
@@ -144,7 +148,23 @@ function setupResolveDev() {
     process.exit(1);
   }
 
+  if (!launcher.includes(MAILBOX_PLACEHOLDER)) {
+    console.error(`❌ Template is missing the expected placeholder ${MAILBOX_PLACEHOLDER}.`);
+    console.error(`   File: ${sourceFile}`);
+    process.exit(1);
+  }
+
   launcher = launcher.replace(RESOURCES_PLACEHOLDER, `[[${resourcesFolder}]]`);
+
+  // Dev builds keep every file they write in `<exe dir>/AppData`, which for a
+  // `cargo tauri dev` / `npm run dev:*` run is src-tauri/target/debug. Create it
+  // here so the 8.3 short-name fallback can resolve on non-ASCII paths.
+  const devMailboxDir = path.join(__dirname, '..', 'src-tauri', 'target', 'debug', 'AppData', 'resolve-bridge');
+  fs.mkdirSync(devMailboxDir, { recursive: true });
+  const devMailboxPath = process.platform === 'win32'
+    ? toWindowsShortPath(devMailboxDir)
+    : devMailboxDir;
+  launcher = launcher.replace(MAILBOX_PLACEHOLDER, `[[${devMailboxPath}]]`);
 
   // Create destination directory if it doesn't exist
   try {
@@ -159,8 +179,9 @@ function setupResolveDev() {
   // Write the generated launcher
   try {
     fs.writeFileSync(destFile, launcher);
-    console.log(`✓ ${LAUNCHER_NAME} generated successfully`);
+    console.log('✓ ' + LAUNCHER_NAME + ' generated successfully');
     console.log(`   Resources: ${resourcesFolder}`);
+    console.log(`   Mailbox:   ${devMailboxDir}`);
     console.log(`   Destination: ${destFile}`);
   } catch (err) {
     console.error(`❌ Failed to write ${LAUNCHER_NAME}: ${err.message}`);

@@ -1,28 +1,31 @@
-import { convertFileSrc } from "@tauri-apps/api/core";
+import { convertFileSrc, invoke } from "@tauri-apps/api/core";
 import { join } from "@tauri-apps/api/path";
 import { ensureCaptionPreviewDir } from "@/api/resolve-api";
-import { exists, remove, rename } from "@tauri-apps/plugin-fs";
 
 export const CAPTION_PREVIEW_DIR = "caption-previews";
+
+/**
+ * Preset preview images live in the app's portable data folder
+ * (`<install dir>/AppData/caption-previews`).
+ *
+ * The file work happens in Rust: the fs plugin's capability scope is static and
+ * cannot name a folder that depends on where the app was installed, so the
+ * backend owns the move/delete and the asset-protocol scope.
+ */
 
 export async function storePresetPreview(
   presetId: string,
   renderedPath: string,
 ): Promise<string> {
-  const dir = await ensureCaptionPreviewDir();
-  const filename = `${presetId}.png`;
-  const target = await join(dir, filename);
-  if (await exists(target)) {
-    await remove(target);
-  }
-  await rename(renderedPath, target);
-  return filename;
+  return invoke<string>("store_caption_preview", {
+    presetId,
+    sourcePath: renderedPath,
+  });
 }
 
 export async function deletePresetPreview(filename: string): Promise<void> {
   try {
-    const dir = await ensureCaptionPreviewDir();
-    await remove(await join(dir, filename));
+    await invoke("delete_caption_preview", { fileName: filename });
   } catch {
     // Preview cleanup is best-effort.
   }

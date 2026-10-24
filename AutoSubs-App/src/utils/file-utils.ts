@@ -2,7 +2,6 @@
 import {
   join,
   documentDir,
-  appLocalDataDir,
   videoDir,
   dirname,
   basename,
@@ -19,6 +18,7 @@ import {
   remove,
 } from "@tauri-apps/plugin-fs";
 import { platform } from "@tauri-apps/plugin-os";
+import { appDataDir } from "@/lib/app-paths";
 import { Subtitle, Speaker } from "@/types";
 
 export { generateTranscriptTxt } from "./transcript-txt.ts";
@@ -375,12 +375,11 @@ async function migrateLegacyTranscriptsOnce(newDir: string): Promise<void> {
 }
 
 // Get the transcripts storage directory.
-// Stored under the Tauri app-local-data directory (e.g. on macOS:
-// ~/Library/Application Support/<bundle-id>/Transcripts). This keeps
-// user-generated data out of Documents and avoids cloud-sync surprises
-// (OneDrive/iCloud), while surviving app updates.
+// Stored in the app's portable data folder (`<install dir>/AppData/Transcripts`),
+// next to every other file AutoSubs owns. This keeps user-generated data out of
+// Documents and out of the user profile, and it survives app updates.
 export async function getSubtitleDocumentsDir(): Promise<string> {
-  const dir = await join(await appLocalDataDir(), "Transcripts");
+  const dir = await join(await appDataDir(), "Transcripts");
 
   // Ensure the directory exists
   try {
@@ -402,11 +401,11 @@ export async function getSubtitleDocumentsDir(): Promise<string> {
 export async function getAudioExportDir(): Promise<string> {
   // Resolve on Linux only allows rendering into paths registered as Media
   // Storage locations. ~/Videos is registered by default, so use it there.
-  // Other platforms keep using appLocalDataDir.
+  // Other platforms keep the render inside the portable data folder.
   const dir =
     platform() === "linux"
       ? await join(await videoDir(), "AutoSubs")
-      : await join(await appLocalDataDir(), "Audio");
+      : await join(await appDataDir(), "Audio");
 
   // Ensure the directory exists
   try {

@@ -99,15 +99,37 @@ graph TB
 | `src-tauri/crates/transcription-engine/src/engines/` | Model-specific implementations (Whisper, Parakeet, Moonshine) |
 | `src-tauri/resources/` | DaVinci Resolve Lua script, Adobe CEP extension resources, and subtitle templates |
 
-## Model Cache Location
+## Data Locations
 
-AI transcription models are downloaded to the app's cache directory. The location varies by platform:
+AutoSubs is portable: every file it writes lives next to the executable, under
+`AppData/`, and the translation service is configured in `config.json` in the
+install directory. Nothing is left in the user profile.
 
-- **macOS**: `~/Library/Caches/com.autosubs/models`
-- **Linux**: `~/.cache/com.autosubs/models` (or `$XDG_CACHE_HOME/com.autosubs/models` if set)
-- **Windows**: `%LOCALAPPDATA%\com.autosubs\models` (typically `C:\Users\{username}\AppData\Local\com.autosubs\models`)
+```
+<install dir>/
+  config.json                 # translation provider (google | microsoft)
+  AppData/
+    autosubs-store.json       # settings
+    autosubs-presets.json     # user caption presets
+    window-state.json
+    Audio/                    # audio renders for the editor bridges
+    Transcripts/              # saved subtitle documents
+    caption-previews/         # preset thumbnails
+    cache/                    # normalized audio
+    logs/
+    models/                   # downloaded AI models
+    resolve-bridge/           # DaVinci Resolve file mailbox
+    webview/                  # WebView2 profile (Windows)
+```
 
-The cache directory is automatically created on first model download. Models can be managed through the app's model selection UI.
+- **Windows**: `%LOCALAPPDATA%\AutoSubs\AppData\models` for a normal per-user install
+- **macOS**: `AutoSubs.app/Contents/AppData/models`
+- **Linux / unwritable install dir**: falls back to the per-user folder
+  (`~/.local/share/com.autosubs`, `%LOCALAPPDATA%\com.autosubs`)
+
+Models are downloaded on first use and can be managed through the app's model
+selection UI. See [docs/portable-appdata-and-translation.md](../docs/portable-appdata-and-translation.md)
+for the full layout, the `config.json` schema and the Microsoft Translator setup.
 
 ## Development
 

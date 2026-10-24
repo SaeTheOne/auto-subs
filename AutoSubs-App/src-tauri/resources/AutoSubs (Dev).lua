@@ -35,10 +35,16 @@ end
 -- mode = "manual": running this script restarts the bridge against your repo
 -- checkout (it stops any running bridge first, including one a 3.10.0 startup
 -- scriptlib left behind).
+-- mailbox_dir: the dev build keeps its data next to the binary
+-- (`target/debug/AppData`), so the app and this script must agree on that
+-- folder. `npm run setup-resolve` bakes the absolute path in; without it the
+-- bootstrap falls back to the per-user LOCALAPPDATA path and the app never sees
+-- this loop's answers.
+local mailbox_dir = [[__AUTOSUBS_DEV_MAILBOX_DIR__]]
 local bootstrap_path = resources_folder .. "/modules/bootstrap.lua"
 local boot = assert(loadfile(bootstrap_path))()
 
 -- No executable path is needed in dev mode: the core server never launches the
 -- desktop app while dev mode is enabled.
-return boot(resources_folder, "", true, { mode = "manual" })
+return boot(resources_folder, "", true, { mode = "manual", mailbox_dir = mailbox_dir })
 

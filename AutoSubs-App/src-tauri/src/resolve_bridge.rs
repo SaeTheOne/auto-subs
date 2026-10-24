@@ -14,9 +14,10 @@
 //!   writes `Fusion.prefs` to disk immediately. We poll that file for an
 //!   `Ack = "<id>"` (request picked up) and `Response = "<id>:<base64 json>"`.
 //!
-//! The mailbox directory is `<data_local_dir>/com.autosubs/resolve-bridge`
-//! (LOCALAPPDATA on Windows, ~/Library/Application Support on macOS,
-//! XDG_DATA_HOME or ~/.local/share on Linux), matching `bootstrap.lua`.
+//! The mailbox directory is `<install dir>/AppData/resolve-bridge`, and the
+//! installed launcher has that absolute path baked in (see `resolve_scripts`).
+//! `bootstrap.lua` still carries an env-derived fallback for launchers that
+//! were installed without the substitution.
 //!
 //! Requests are serialised behind a mutex because the mailbox holds a single
 //! request file at a time.
@@ -89,11 +90,14 @@ fn next_request_id() -> String {
     (unix_millis() * 1000 + counter).to_string()
 }
 
-/// `<data_local_dir>/com.autosubs/resolve-bridge`, matching the Lua side.
+/// `<install dir>/AppData/resolve-bridge`.
+///
+/// The path is baked into the installed Resolve launcher by `resolve_scripts`,
+/// so the Lua side uses exactly this directory; `bootstrap.lua` keeps its
+/// env-derived fallback only for launchers that were installed without the
+/// substitution (the shared Linux package script).
 pub(crate) fn mailbox_dir() -> Result<PathBuf, String> {
-    dirs::data_local_dir()
-        .map(|d| d.join("com.autosubs").join("resolve-bridge"))
-        .ok_or_else(|| "could not determine the local data directory".to_string())
+    Ok(crate::app_paths::subdir("resolve-bridge"))
 }
 
 /// Per-user Resolve support directory — the parent of `Fusion/Profiles` (where

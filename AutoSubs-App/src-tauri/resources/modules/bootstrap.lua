@@ -138,10 +138,11 @@ local function boot(resources_folder, app_executable, dev_mode, opts)
     local platform = detect_platform()
     _G.AUTOSUBS_PLATFORM = platform
     _G.AUTOSUBS_SEP = (platform == "Windows") and "\\" or "/"
-    -- The installed launcher bakes the mailbox dir in (os.getenv answers are
-    -- ANSI bytes on Windows, which breaks when a profile name isn't in the
-    -- system code page); the env-derived path is the fallback for scripts
-    -- that can't carry a per-user value, e.g. the shared Linux package one.
+    -- The installed launcher (and the dev launcher) bake the mailbox dir in
+    -- (os.getenv answers are ANSI bytes on Windows, which breaks when a profile
+    -- name isn't in the system code page); the env-derived path is the fallback
+    -- for scripts that can't carry a per-user value, e.g. the shared Linux
+    -- package one.
     _G.AUTOSUBS_MAILBOX = (opts and opts.mailbox_dir) or mailbox_dir(platform)
     _G.AutoSubs_base64 = base64_encode
 

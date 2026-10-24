@@ -7,6 +7,7 @@ pub mod model_manager;
 pub mod vad;
 pub mod types;
 pub mod translation_client;
+pub mod translation_config;
 pub mod translation_pipeline;
 pub mod utils;
 pub mod formatting;

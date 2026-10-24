@@ -173,15 +173,10 @@ fn ensure_dir(path: &Path) -> io::Result<()> {
     Ok(())
 }
 
-fn resolve_log_dir<R: Runtime>(app: &AppHandle<R>) -> PathBuf {
-    let pr = app.path();
-    let mut dir = pr
-        .app_log_dir()
-        .or_else(|_| pr.app_data_dir())
-        .or_else(|_| pr.app_cache_dir())
-        .unwrap_or_else(|_| std::env::temp_dir());
-    dir.push("logs");
-    dir
+/// `<install dir>/AppData/logs`, so logs travel with the app instead of being
+/// left behind in the user profile.
+fn resolve_log_dir() -> PathBuf {
+    crate::app_paths::subdir("logs")
 }
 
 pub fn init_logging<R: Runtime>(app: &AppHandle<R>) {
@@ -199,7 +194,7 @@ pub fn init_logging<R: Runtime>(app: &AppHandle<R>) {
         }
     }
 
-    let log_dir = resolve_log_dir(app);
+    let log_dir = resolve_log_dir();
     let _ = fs::create_dir_all(&log_dir);
     cleanup_old_logs(&log_dir);
 
@@ -272,16 +267,16 @@ pub fn clear_backend_logs() {
 }
 
 #[tauri::command]
-pub fn get_log_dir<R: Runtime>(app: AppHandle<R>) -> Result<String, String> {
-    let dir = resolve_log_dir(&app);
+pub fn get_log_dir<R: Runtime>(_app: AppHandle<R>) -> Result<String, String> {
+    let dir = resolve_log_dir();
     ensure_dir(&dir).map_err(|e| e.to_string())?;
     Ok(dir.to_string_lossy().to_string())
 }
 
 #[tauri::command]
-pub fn export_backend_logs<R: Runtime>(app: AppHandle<R>) -> Result<String, String> {
+pub fn export_backend_logs<R: Runtime>(_app: AppHandle<R>) -> Result<String, String> {
     // Ensure log directory exists
-    let dir = resolve_log_dir(&app);
+    let dir = resolve_log_dir();
     ensure_dir(&dir).map_err(|e| e.to_string())?;
 
     // Collect logs from in-memory ring buffer
@@ -299,8 +294,8 @@ pub fn export_backend_logs<R: Runtime>(app: AppHandle<R>) -> Result<String, Stri
 }
 
 #[tauri::command]
-pub fn open_log_dir<R: Runtime>(app: AppHandle<R>) -> Result<(), String> {
-    let dir = resolve_log_dir(&app);
+pub fn open_log_dir<R: Runtime>(_app: AppHandle<R>) -> Result<(), String> {
+    let dir = resolve_log_dir();
     ensure_dir(&dir).map_err(|e| e.to_string())?;
 
     let path = dir.to_string_lossy().to_string();

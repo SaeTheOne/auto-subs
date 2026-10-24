@@ -32,7 +32,7 @@ flowchart TD
 
 Resolve 21.1 (free edition) sandboxes the Lua state that runs Workspace > Scripts scripts: `io`, `ffi`, `package`, `require`, `os.execute` and `bmd.readdir` are all nil, so the old `ljsocket` HTTP server on port 56002 can no longer exist. The bridge is now a file mailbox, the only transport:
 
-- **Rust → Lua**: `resolve_bridge.rs` atomically writes `request.lua` (a `return {...}` chunk with an id and a JSON body) into a shared mailbox dir (`<data_local_dir>/com.autosubs/resolve-bridge`). The Lua loop picks it up with `loadfile`.
+- **Rust → Lua**: `resolve_bridge.rs` atomically writes `request.lua` (a `return {...}` chunk with an id and a JSON body) into a shared mailbox dir (`<install dir>/AppData/resolve-bridge`, baked into the installed launcher). The Lua loop picks it up with `loadfile`.
 - **Lua → Rust**: the Lua side calls `fusion:SetPrefs("Global.AutoSubsBridge.Ack"/".Response", ...)` then `fusion:SavePrefs()`, which flushes `Fusion.prefs` to disk; Rust polls that file. Responses are `<id>:<base64 json>` so Rust never has to parse Fusion's Lua string escaping.
 
 The Lua side must not use `io`, `ffi`, `package`, `require`, `os.execute` or `bmd.readdir` anywhere — modules are loaded through `AutoSubs_require` (see `modules/bootstrap.lua`).
@@ -96,7 +96,7 @@ npm run dev             # starts the app in dev mode
 ### Debugging
 
 - **Lua**: Use `print()` — output appears in Resolve's Console (**Script → Console**)
-- **Bridge**: Check Rust backend logs for `resolve_bridge` requests; the mailbox dir is `<data_local_dir>/com.autosubs/resolve-bridge` and responses land in `Fusion.prefs` under `Global.AutoSubsBridge.*`
+- **Bridge**: Check Rust backend logs for `resolve_bridge` requests; the mailbox dir is `<install dir>/AppData/resolve-bridge` (or `src-tauri/target/debug/AppData/resolve-bridge` for a dev build) and responses land in `Fusion.prefs` under `Global.AutoSubsBridge.*`
 - **Fusion**: Inspect tool inputs in the Fusion inspector or check node connections in the Flow view
 
 ### Common Issues

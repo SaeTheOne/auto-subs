@@ -9,7 +9,7 @@ use std::path::PathBuf;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::Instant;
-use tauri::{AppHandle, Emitter, Manager, Runtime, command};
+use tauri::{AppHandle, Emitter, Runtime, command};
 use transcription_engine::{
     Callbacks, CensorStyle, ContentFormatting, DiarizeBackend, Engine, EngineConfig, LabeledProgressFn, PostProcessConfig, ProgressType, SegmentStage,
     Segment as WDSegment, TextCase, TextDensity, TranscribeOptions, process_segments,
@@ -671,11 +671,9 @@ pub async fn create_normalized_audio<R: Runtime>(
     let source = expand_tilde(source);
     tracing::info!("audio normalization: start input={}", source.display());
 
-    let path_resolver = app.path();
-
-    let cache_dir = path_resolver
-        .app_cache_dir()
-        .unwrap_or_else(|_| std::env::temp_dir());
+    // Normalized audio belongs to the app's portable data folder, not the
+    // per-user cache dir, so nothing is left in the user profile.
+    let cache_dir = crate::app_paths::subdir("cache");
 
     let out_path = if cfg!(test) {
         let n = NORMALIZED_AUDIO_COUNTER.fetch_add(1, Ordering::Relaxed);

@@ -32,6 +32,11 @@ mod resolve_bridge;
 mod resolve_scripts;
 mod adobe_bridge;
 mod cli;
+mod app_config;
+mod app_fs_scope;
+mod app_paths;
+mod caption_previews;
+mod window_state;
 #[cfg(target_os = "macos")]
 
 // Include integration-like tests that need crate visibility
@@ -269,6 +274,15 @@ fn create_main_window(app: &tauri::AppHandle) -> tauri::Result<tauri::WebviewWin
             .accept_first_mouse(true)
             .visible(false);
 
+    // The WebView2 profile (cache, cookies, IndexedDB, GPU shaders) is the last
+    // thing that would otherwise stay in the user profile. Pointing it at the
+    // portable data folder keeps the whole app state under the install
+    // directory. WebView2 is Windows-only, so is this override.
+    #[cfg(target_os = "windows")]
+    {
+        builder = builder.data_directory(crate::app_paths::subdir("webview"));
+    }
+
     #[cfg(target_os = "macos")]
     {
         // Empty native title for the overlay title bar (no centered text), set
@@ -290,6 +304,13 @@ fn create_main_window(app: &tauri::AppHandle) -> tauri::Result<tauri::WebviewWin
 
     // The window is still hidden here, so the colour lands before first paint.
     let window = builder.build()?;
+
+    // Geometry is persisted in the portable data folder (window_state.rs
+    // replaces the window-state plugin). Restoring while hidden avoids a
+    // visible jump when the window is shown.
+    crate::window_state::restore(&window);
+    crate::window_state::install(&window);
+
     let dark = matches!(window.theme(), Ok(tauri::Theme::Dark));
     if let Err(e) = window.set_background_color(Some(if dark {
         tauri::window::Color(0, 0, 0, 255)
@@ -380,18 +401,6 @@ fn install_smooth_zoom(window: &tauri::WebviewWindow) {
     }
 }
 
-#[tauri::command]
-fn ensure_caption_preview_dir(app: tauri::AppHandle) -> Result<String, String> {
-    let dir = app
-        .path()
-        .app_local_data_dir()
-        .map_err(|e| e.to_string())?
-        .join("caption-previews");
-
-    std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
-    Ok(dir.to_string_lossy().into_owned())
-}
-
 fn main() {
     // Inject system proxy env vars before any thread or HTTP client is created so
     // that both ureq (hf-hub) and reqwest pick up the Windows system proxy set by
@@ -429,23 +438,19 @@ fn main() {
             // Focus the existing window when a second instance is launched
             let _ = app.get_webview_window("main").map(|w| w.set_focus());
         }));
-        if !cfg!(debug_assertions) {
-            // Restore the previous window geometry on launch. VISIBLE is excluded:
-            // the window starts hidden and the app's own show/focus flow reveals it.
-            builder = builder.plugin(
-                tauri_plugin_window_state::Builder::new()
-                    .with_state_flags(
-                        tauri_plugin_window_state::StateFlags::SIZE
-                            | tauri_plugin_window_state::StateFlags::POSITION
-                            | tauri_plugin_window_state::StateFlags::MAXIMIZED,
-                    )
-                    .build(),
-            );
-        }
+        // Window geometry is persisted by `window_state` into the portable data
+        // folder, so the window-state plugin (and its file in %APPDATA%) is gone.
     }
 
     builder
         .setup(move |app| {
+            // Portable data root (`<install dir>/AppData`) and
+            // `<install dir>/config.json`. This creates the default config on
+            // first run and points the translation engine at it, so it has to
+            // happen before logging (which lives in that folder) and before any
+            // transcription/translation work.
+            crate::app_config::init();
+
             // Initialize backend logging (file + in-memory ring buffer). Logs go to
             // the log file only, never stdout/stderr, so CLI output stays clean.
             crate::logging::init_logging(&app.handle());
@@ -463,9 +468,28 @@ fn main() {
                 return Ok(());
             }
 
+            // Transcripts and the audio export folder moved into the portable
+            // data folder, so the webview needs a runtime ACL grant for it: the
+            // static capability scopes cannot name an install-dependent path.
+            // Granted before the window exists so no IPC can race it.
+            crate::app_fs_scope::grant_portable_data_access(app.handle());
+
             // GUI mode: create the main window programmatically (see create_main_window
             // for why it isn't declared in tauri.conf.json).
             create_main_window(app.handle())?;
+
+            // Caption previews live in the portable data folder; allow the
+            // asset protocol to serve them (the static config scope only knows
+            // about $APPLOCALDATA).
+            {
+                let previews = crate::app_paths::subdir("caption-previews");
+                if let Err(e) = app.asset_protocol_scope().allow_directory(&previews, true) {
+                    tracing::warn!(
+                        "could not extend the asset protocol scope to {}: {e}",
+                        previews.display()
+                    );
+                }
+            }
 
             crate::adobe_bridge::init_adobe_server(app.handle().clone());
 
@@ -687,7 +711,14 @@ fn main() {
             logging::export_backend_logs,
             logging::open_log_dir,
             resolve_bridge::resolve_bridge,
-            ensure_caption_preview_dir,
+            caption_previews::ensure_caption_preview_dir,
+            caption_previews::store_caption_preview,
+            caption_previews::delete_caption_preview,
+            app_paths::get_app_data_dir,
+            app_paths::get_data_file,
+            app_paths::get_app_config_path,
+            app_config::get_translation_status,
+            app_config::reload_translation_config,
             adobe_bridge::send_to_adobe,
             trigger_install_update,
             audio_preprocess::extract_audio_peaks,
@@ -725,6 +756,13 @@ fn main() {
                     // If we're already exiting, don't intercept again; allow exit to proceed
                     if EXITING.swap(true, AtomicOrdering::SeqCst) {
                         return;
+                    }
+
+                    // Persist the window geometry into the portable data folder
+                    // before the process goes away (window_state owns this now,
+                    // the window-state plugin was removed).
+                    if let Some(window) = app.get_webview_window("main") {
+                        crate::window_state::persist(&window);
                     }
 
                     // keep the app alive long enough to send the shutdown signal

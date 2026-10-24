@@ -3,6 +3,7 @@ import { load, Store } from '@tauri-apps/plugin-store';
 import { CaptionPreset } from '@/types';
 import { BUILT_IN_PRESETS, DEFAULT_PRESET_ID, isBuiltInPresetId } from '@/presets/built-in-presets';
 import { deletePresetPreview } from '@/lib/caption-previews';
+import { dataFilePath } from '@/lib/app-paths';
 
 const STORE_FILE = 'autosubs-presets.json';
 const STORE_KEY = 'userPresets';
@@ -79,7 +80,9 @@ export function PresetsProvider({ children }: { children: React.ReactNode }) {
         let cancelled = false;
         (async () => {
             try {
-                const loaded = await load(STORE_FILE, { autoSave: false });
+                // Absolute path: the store lives in the portable data folder,
+                // not the per-user app data dir the relative path would use.
+                const loaded = await load(await dataFilePath(STORE_FILE), { autoSave: false });
                 if (cancelled) return;
                 setStore(loaded);
                 const stored = await loaded.get<CaptionPreset[]>(STORE_KEY);
