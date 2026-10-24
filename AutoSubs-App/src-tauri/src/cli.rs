@@ -219,6 +219,7 @@ async fn run_transcribe<R: Runtime>(app: AppHandle<R>, m: Matches) -> ! {
         censored_words: None,
         censor_style: None,
         custom_prompt: arg_str(&m, "prompt"),
+        original_srt_path: arg_str(&m, "original-srt"),
         asr_model_path: None,
         vad_model_path: None,
         diarize_segment_path: None,

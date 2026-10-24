@@ -252,6 +252,12 @@ export interface TranscriptionOptions {
     censoredWords: string[],
     censorStyle: CensorStyle,
     customPrompt?: string,
+    /**
+     * When set, the backend also writes a source-language SRT here while it
+     * transcribes (before the translated text replaces it). The transcription
+     * panel points this at the imported media's own folder.
+     */
+    originalSrtPath?: string,
     // Pre-resolved model paths from ensure_models.
     asrModelPath?: string,
     vadModelPath?: string,

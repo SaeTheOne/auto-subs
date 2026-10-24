@@ -114,6 +114,10 @@ pub struct FrontendTranscribeOptions {
     pub censored_words: Option<Vec<String>>,
     pub censor_style: Option<CensorStyle>,
     pub custom_prompt: Option<String>,
+    /// Where to drop a source-language SRT while transcribing, before the
+    /// translation pipeline replaces the text. The panel points this at the
+    /// imported media's own folder.
+    pub original_srt_path: Option<String>,
     // Optional pre-resolved model paths (filled by ensure_models command).
     pub asr_model_path: Option<String>,
     pub vad_model_path: Option<String>,
@@ -444,8 +448,21 @@ pub async fn transcribe_audio<R: Runtime>(
         // For now, we pass the enable_gpu option if the crate supports it in the future
 
         // Set up callbacks using whisper-diarize-rs built-in cancellation
+        // Source-language segments, captured as the engine emits them and
+        // before the translation pipeline swaps their text, so the run can drop
+        // an original-language SRT next to the imported media.
+        let source_segments: Arc<Mutex<std::collections::BTreeMap<usize, WDSegment>>> =
+            Arc::new(Mutex::new(std::collections::BTreeMap::new()));
+        let source_segments_cb = Arc::clone(&source_segments);
+
         let segment_callback: Arc<dyn Fn(usize, &WDSegment, SegmentStage) + Send + Sync> = Arc::new(move |index: usize, segment: &WDSegment, stage: SegmentStage| {
             tracing::trace!("segment [{index}] ({stage:?}): {}", segment.text);
+
+            if matches!(stage, SegmentStage::Transcribe) {
+                if let Ok(mut map) = source_segments_cb.lock() {
+                    map.insert(index, segment.clone());
+                }
+            }
 
             // One event for every per-segment change, tagged with the stage that
             // produced it. The frontend needs to distinguish new text from
@@ -593,6 +610,24 @@ pub async fn transcribe_audio<R: Runtime>(
             (Vec::new(), app_segments)
         };
 
+        // Write the source-language SRT before the translated text is what the
+        // caller sees. Best effort: a failure here never fails the run.
+        if let Some(path) = options.original_srt_path.as_deref() {
+            let segments: Vec<WDSegment> = source_segments
+                .lock()
+                .map(|map| map.values().cloned().collect())
+                .unwrap_or_default();
+
+            if segments.is_empty() {
+                tracing::warn!(path, "source SRT requested but no source segments were captured");
+            } else {
+                match write_source_srt(std::path::Path::new(path), &segments) {
+                    Ok(count) => tracing::info!(path, cues = count, "wrote the source-language SRT"),
+                    Err(error) => tracing::warn!(path, %error, "could not write the source-language SRT"),
+                }
+            }
+        }
+
         Ok::<Transcript, String>(Transcript {
             processing_time_sec: 0, // Will be set below
             language: output_language,
@@ -689,6 +724,51 @@ pub async fn create_normalized_audio<R: Runtime>(
         .map_err(|e| eyre::eyre!("Failed to normalize audio: {}", e))?;
 
     Ok(out_path)
+}
+
+/// `HH:MM:SS,mmm` as SRT expects it.
+fn format_srt_timestamp(seconds: f64) -> String {
+    let total_ms = (seconds.max(0.0) * 1000.0).round() as u64;
+    let millis = total_ms % 1000;
+    let total_seconds = total_ms / 1000;
+    let secs = total_seconds % 60;
+    let minutes = (total_seconds / 60) % 60;
+    let hours = total_seconds / 3600;
+    format!("{hours:02}:{minutes:02}:{secs:02},{millis:03}")
+}
+
+/// Write engine segments as a plain SRT file. Returns the number of cues.
+fn write_source_srt(
+    path: &std::path::Path,
+    segments: &[WDSegment],
+) -> std::result::Result<usize, String> {
+    let mut body = String::new();
+    let mut cues = 0usize;
+
+    for segment in segments {
+        let text = segment.text.trim();
+        if text.is_empty() {
+            continue;
+        }
+        cues += 1;
+        body.push_str(&format!(
+            "{cues}\n{} --> {}\n{}\n\n",
+            format_srt_timestamp(segment.start),
+            format_srt_timestamp(segment.end),
+            text
+        ));
+    }
+
+    if cues == 0 {
+        return Err("no cues to write".to_string());
+    }
+
+    if let Some(parent) = path.parent() {
+        std::fs::create_dir_all(parent)
+            .map_err(|e| format!("create {}: {e}", parent.display()))?;
+    }
+    std::fs::write(path, body).map_err(|e| format!("write {}: {e}", path.display()))?;
+    Ok(cues)
 }
 
 /// Convert a `transcription_engine` segment to the app's `Segment` type.

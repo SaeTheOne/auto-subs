@@ -212,6 +212,11 @@
           "name": "prompt",
           "description": "Custom prompt to guide transcription.",
           "takesValue": true
+        },
+        {
+          "name": "original-srt",
+          "description": "Also write the source-language subtitles to this SRT file before translation.",
+          "takesValue": true
         }
       ]
     },

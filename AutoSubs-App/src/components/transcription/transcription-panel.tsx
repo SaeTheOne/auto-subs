@@ -1,5 +1,6 @@
 import * as React from "react";
 import { invoke } from "@tauri-apps/api/core";
+import { basename, dirname, join } from "@tauri-apps/api/path";
 import { useTranslation } from "react-i18next";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { useModels } from "@/contexts/ModelsContext";
@@ -336,6 +337,20 @@ export function TranscriptionPanel({
         return;
       }
 
+      // A translating run also drops the source-language subtitles next to the
+      // imported media, so the original wording stays available after the
+      // translated text replaces it in the app.
+      let originalSrtPath: string | undefined;
+      if (translate && effectiveMode === "file" && fileInput) {
+        try {
+          const folder = await dirname(fileInput);
+          const stem = (await basename(fileInput)).replace(/\.[^.]+$/, "");
+          originalSrtPath = await join(folder, `${stem}.orig.srt`);
+        } catch (error) {
+          console.warn("Could not derive the original-language SRT path:", error);
+        }
+      }
+
       const options: TranscriptionOptions = {
         audioPath: audioInfo.path,
         offset: Math.round(audioInfo.offset * 1000) / 1000,
@@ -343,6 +358,7 @@ export function TranscriptionPanel({
         lang: language,
         translate,
         targetLanguage,
+        originalSrtPath,
         enableDtw: enableDTW,
         enableVad,
         enableForcedAlignment: willUseForcedAlignment,

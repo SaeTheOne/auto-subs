@@ -6,7 +6,7 @@ import { useIntegration, type Integration } from '@/contexts/IntegrationContext'
 import { getActiveCensorWords } from '@/censor/merge';
 import { open, save } from '@tauri-apps/plugin-dialog';
 import { readTextFile, writeTextFile } from '@/lib/app-fs';
-import { downloadDir, basename } from '@tauri-apps/api/path';
+import { basename, dirname, downloadDir, join } from '@tauri-apps/api/path';
 import { toast } from 'sonner';
 import i18n from '@/i18n';
 import {
@@ -86,6 +86,11 @@ export function SubtitleDocumentProvider({ children }: { children: React.ReactNo
   const [markIn, setMarkIn] = useState(0);
   const [currentSubtitleDocumentFilename, setCurrentSubtitleDocumentFilename] = useState<string | null>(null);
   const [currentSubtitleDocumentSourceName, setCurrentSubtitleDocumentSourceName] = useState<string | null>(null);
+  // Absolute path of the media this document came from, when there is one.
+  // Exports default to its folder so "save next to the video" is one click.
+  const [currentSubtitleDocumentSourcePath, setCurrentSubtitleDocumentSourcePath] = useState<string | null>(null);
+  const sourcePathRef = useRef<string | null>(null);
+  sourcePathRef.current = currentSubtitleDocumentSourcePath;
 
   // Prefer the source audio file's name, else the timeline it came from.
   // Deliberately excludes `displayName`, which falls back to the generated
@@ -119,6 +124,7 @@ export function SubtitleDocumentProvider({ children }: { children: React.ReactNo
         console.log("Transcript loaded:", transcript);
         setCurrentSubtitleDocumentFilename(filename);
         setCurrentSubtitleDocumentSourceName(subtitleDocumentSourceName(transcript));
+        setCurrentSubtitleDocumentSourcePath(transcript.metadata?.sourceFilePath ?? null);
         setMarkIn(transcript.mark_in);
         setSubtitles(transcript.segments || []);
         setSpeakers(transcript.speakers || []);
@@ -127,6 +133,7 @@ export function SubtitleDocumentProvider({ children }: { children: React.ReactNo
         console.warn("No transcript found for:", filename);
         setCurrentSubtitleDocumentFilename(null);
         setCurrentSubtitleDocumentSourceName(null);
+        setCurrentSubtitleDocumentSourcePath(null);
         setSubtitles([]);
         setSpeakers([]);
       }
@@ -134,6 +141,7 @@ export function SubtitleDocumentProvider({ children }: { children: React.ReactNo
       console.log("No matching transcript found");
       setCurrentSubtitleDocumentFilename(null);
       setCurrentSubtitleDocumentSourceName(null);
+      setCurrentSubtitleDocumentSourcePath(null);
       setSubtitles([]);
       setSpeakers([]);
     }
@@ -227,6 +235,9 @@ export function SubtitleDocumentProvider({ children }: { children: React.ReactNo
       settings.audioInputMode === "file"
         ? fileInput?.split(/[/\\]/).pop() || null
         : timelineInfo?.name || null,
+    );
+    setCurrentSubtitleDocumentSourcePath(
+      settings.audioInputMode === "file" ? fileInput ?? null : null,
     );
 
     // Save transcript to JSON file.
@@ -348,8 +359,23 @@ export function SubtitleDocumentProvider({ children }: { children: React.ReactNo
       );
 
       const { defaultPath, filters } = subtitleExportDialogOptions(format, baseName);
+
+      // Default the save dialog to the imported media's own folder, so exporting
+      // next to the video needs no navigation. Falls back to the dialog's own
+      // default when the document has no source path (e.g. timeline runs) or the
+      // path cannot be combined.
+      let dialogDefaultPath = defaultPath;
+      const sourcePath = sourcePathRef.current;
+      if (sourcePath) {
+        try {
+          dialogDefaultPath = await join(await dirname(sourcePath), defaultPath);
+        } catch (error) {
+          console.warn('Could not default the export to the media folder:', error);
+        }
+      }
+
       const filePath = subtitleExportWritePath(await save({
-        defaultPath,
+        defaultPath: dialogDefaultPath,
         filters,
       }));
 
@@ -449,6 +475,9 @@ export function SubtitleDocumentProvider({ children }: { children: React.ReactNo
           ? fileInput?.split(/[/\\]/).pop() || null
           : timelineInfo?.name || null,
       )
+      setCurrentSubtitleDocumentSourcePath(
+        settings.audioInputMode === "file" ? fileInput ?? null : null,
+      )
       setSubtitles(segments)
     } catch (error) {
       console.error('Failed to open file', error);
@@ -462,6 +491,7 @@ export function SubtitleDocumentProvider({ children }: { children: React.ReactNo
     setSpeakers(transcript?.speakers || []);
     setCurrentSubtitleDocumentFilename(filename);
     setCurrentSubtitleDocumentSourceName(subtitleDocumentSourceName(transcript));
+    setCurrentSubtitleDocumentSourcePath(transcript?.metadata?.sourceFilePath ?? null);
     if (typeof transcript?.mark_in === "number") {
       setMarkIn(transcript.mark_in);
     }
@@ -481,6 +511,7 @@ export function SubtitleDocumentProvider({ children }: { children: React.ReactNo
     setSpeakers([]);
     setCurrentSubtitleDocumentFilename(null);
     setCurrentSubtitleDocumentSourceName(null);
+    setCurrentSubtitleDocumentSourcePath(null);
     setMarkIn(0);
   };
 

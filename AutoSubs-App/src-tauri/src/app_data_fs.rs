@@ -1,23 +1,22 @@
-//! File operations the webview performs on the app's own folders.
+//! File operations the webview performs on the app's own folders, plus the
+//! export targets the save dialog returns.
 //!
 //! The frontend used `@tauri-apps/plugin-fs` for these, authorised by a runtime
 //! ACL capability scoped to `<install dir>/AppData`. That capability failed to
 //! deserialise on Windows (`error deserializing scope: data did not match any
 //! variant of untagged enum EntryRaw`), and a static capability cannot name an
-//! install-dependent path at all, so the work moved here instead:
+//! install-dependent path at all, so the work moved here instead.
 //!
-//! * every path is resolved to an absolute path and checked against an explicit
-//!   allow-list of roots (the portable data folder plus the user folders the
-//!   save/open dialogs hand us);
-//! * the commands cover exactly what `src/utils/file-utils.ts` and the document
-//!   contexts need, so the fs plugin is no longer involved in app data.
+//! Paths are accepted as given: the save/open dialogs decide what the user may
+//! touch, and exports routinely land next to the imported media on another
+//! volume. Only "absolute, no `..`" is enforced.
 
 use std::fs;
 use std::path::{Component, Path, PathBuf};
 use std::time::UNIX_EPOCH;
 
 use serde::Serialize;
-use tauri::{AppHandle, Manager};
+use tauri::AppHandle;
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -36,57 +35,14 @@ pub struct FileStat {
     pub modified_ms: Option<u64>,
 }
 
-/// Folders the webview may touch through these commands.
-fn allowed_roots(app: &AppHandle) -> Vec<PathBuf> {
-    let mut roots = vec![crate::app_paths::data_root()];
-
-    let resolver = app.path();
-    for dir in [
-        resolver.document_dir(),
-        resolver.download_dir(),
-        resolver.desktop_dir(),
-        resolver.video_dir(),
-        resolver.audio_dir(),
-        resolver.picture_dir(),
-    ]
-    .into_iter()
-    .flatten()
-    {
-        roots.push(dir);
-    }
-
-    roots
-}
-
-/// Canonicalise the longest existing prefix and re-append the rest, so a path
-/// that does not exist yet still compares against the roots.
-fn normalize(path: &Path) -> PathBuf {
-    let mut suffix: Vec<std::ffi::OsString> = Vec::new();
-    let mut current = path.to_path_buf();
-
-    loop {
-        if let Ok(canonical) = fs::canonicalize(&current) {
-            let mut out = canonical;
-            for part in suffix.iter().rev() {
-                out.push(part);
-            }
-            return out;
-        }
-        match current.file_name() {
-            Some(name) => {
-                suffix.push(name.to_os_string());
-                if !current.pop() {
-                    break;
-                }
-            }
-            None => break,
-        }
-    }
-
-    path.to_path_buf()
-}
-
-fn check_path(app: &AppHandle, raw: &str) -> Result<PathBuf, String> {
+/// Validate a path handed over by the webview.
+///
+/// The save/open dialogs already gate what the user picks, and transcripts,
+/// exports and media can live on any volume (`F:\迅雷下载\...` is a normal case),
+/// so there is no folder allow-list: the checks are "absolute, and no `..`
+/// traversal". Anything else (undoing a user's own choice of folder) just breaks
+/// exporting to their media folder.
+fn check_path(_app: &AppHandle, raw: &str) -> Result<PathBuf, String> {
     if raw.trim().is_empty() {
         return Err("empty path".to_string());
     }
@@ -102,17 +58,7 @@ fn check_path(app: &AppHandle, raw: &str) -> Result<PathBuf, String> {
         return Err(format!("path must not contain '..': {raw}"));
     }
 
-    let normalized = normalize(path);
-    let allowed = allowed_roots(app)
-        .into_iter()
-        .map(|root| normalize(&root))
-        .any(|root| normalized.starts_with(&root));
-
-    if allowed {
-        Ok(path.to_path_buf())
-    } else {
-        Err(format!("path is outside the app's folders: {raw}"))
-    }
+    Ok(path.to_path_buf())
 }
 
 #[tauri::command]
@@ -217,16 +163,4 @@ pub fn app_fs_copy(app: AppHandle, from: String, to: String) -> Result<(), Strin
     }
     fs::copy(&from, &to).map_err(|e| format!("copy {} -> {}: {e}", from.display(), to.display()))?;
     Ok(())
-}
-
-#[cfg(test)]
-mod tests {
-    use super::normalize;
-    use std::path::PathBuf;
-
-    #[test]
-    fn normalize_keeps_a_missing_tail() {
-        let path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("Cargo.toml");
-        assert!(normalize(&path).exists(), "{:?}", normalize(&path));
-    }
 }
