@@ -709,5 +709,21 @@
     "addToTimelineFailed": "Couldn't add subtitles to timeline",
     "clipsBlocked": "Couldn't place captions on the output track. Try 'Add to New Track'.",
     "reformatFailed": "Reformat failed"
+  },
+  "batch": {
+    "title": "Batch transcription",
+    "description": "Drop folders, subtitles are written next to each file.",
+    "addFolder": "Add folder",
+    "addFiles": "Add files",
+    "usingSettings": "Uses the current model and language",
+    "empty": "No files yet. Drop folders here.",
+    "pending": "Pending",
+    "count": "{{done}} / {{total}}",
+    "finished": "Done: {{done}} file(s)",
+    "finishedWithErrors": "Done: {{done}}, failed: {{failed}}",
+    "start": "Start",
+    "runAgain": "Run again",
+    "cancel": "Stop",
+    "close": "Close"
   }
 }

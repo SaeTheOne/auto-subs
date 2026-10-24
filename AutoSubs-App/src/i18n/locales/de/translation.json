@@ -689,5 +689,21 @@
     "addToTimelineFailed": "Untertitel konnten nicht zur Timeline hinzugefügt werden",
     "clipsBlocked": "Untertitel konnten nicht auf der Ausgabespur platziert werden. 'Add to New Track' wählen.",
     "reformatFailed": "Formatfehler"
+  },
+  "batch": {
+    "title": "Stapelverarbeitung",
+    "description": "Ordner ablegen, Untertitel landen neben jeder Datei.",
+    "addFolder": "Ordner hinzufügen",
+    "addFiles": "Dateien hinzufügen",
+    "usingSettings": "Nutzt aktuelles Modell und Sprache",
+    "empty": "Noch keine Dateien. Ordner hier ablegen.",
+    "pending": "Wartet",
+    "count": "{{done}} / {{total}}",
+    "finished": "Fertig: {{done}} Datei(en)",
+    "finishedWithErrors": "Fertig: {{done}}, fehlgeschlagen: {{failed}}",
+    "start": "Starten",
+    "runAgain": "Erneut starten",
+    "cancel": "Stoppen",
+    "close": "Schließen"
   }
 }

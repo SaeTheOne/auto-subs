@@ -689,5 +689,21 @@
     "addToTimelineFailed": "Impossible d'ajouter les sous-titres à la timeline",
     "clipsBlocked": "Impossible de placer les sous-titres sur la piste de sortie. Essayez 'Add to New Track'.",
     "reformatFailed": "Échec du reformatage"
+  },
+  "batch": {
+    "title": "Traitement par lot",
+    "description": "Déposez des dossiers, les sous-titres vont à côté du fichier.",
+    "addFolder": "Ajouter un dossier",
+    "addFiles": "Ajouter des fichiers",
+    "usingSettings": "Utilise le modèle et la langue actuels",
+    "empty": "Aucun fichier. Déposez des dossiers ici.",
+    "pending": "En attente",
+    "count": "{{done}} / {{total}}",
+    "finished": "Terminé : {{done}} fichier(s)",
+    "finishedWithErrors": "Terminé : {{done}}, échecs : {{failed}}",
+    "start": "Démarrer",
+    "runAgain": "Relancer",
+    "cancel": "Arrêter",
+    "close": "Fermer"
   }
 }

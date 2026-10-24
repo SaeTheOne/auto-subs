@@ -13,6 +13,7 @@ import type {
   Track,
 } from "@/types";
 import { TranscriptionHeader } from "./transcription-header";
+import { BatchDialog } from "./batch-dialog";
 import { CompletionStepItem } from "@/components/processing/completion-step-item";
 import { ProcessingStepsList } from "./processing-steps-list";
 import { RunSummaryCard } from "./run-summary";
@@ -192,6 +193,8 @@ export function TranscriptionPanelView({
     [i18n.language],
   );
 
+  const [batchOpen, setBatchOpen] = React.useState(false);
+
   const startButtonLabel =
     audioInputMode === "timeline" &&
     selectedTrackCount > 0 &&
@@ -204,7 +207,9 @@ export function TranscriptionPanelView({
       <TranscriptionHeader
         onViewSubtitles={onViewSubtitles}
         isSubtitleViewerOpen={isSubtitleViewerOpen}
+        onOpenBatch={() => setBatchOpen(true)}
       />
+      <BatchDialog open={batchOpen} onOpenChange={setBatchOpen} />
 
       <div className="flex-1 min-h-0 flex flex-col p-3.5 pt-1.5 pb-4">
         {showProcessing && (

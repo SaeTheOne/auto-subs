@@ -1,6 +1,6 @@
 import * as React from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { PanelRight, RotateCcw } from "lucide-react";
+import { ListVideo, PanelRight, RotateCcw } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { platform } from "@tauri-apps/plugin-os";
 import { Button } from "@/components/ui/button";
@@ -17,6 +17,8 @@ import { SettingsDropdown } from "./settings-dropdown";
 interface TranscriptionHeaderProps {
   onViewSubtitles?: () => void;
   isSubtitleViewerOpen?: boolean;
+  /** Opens the batch panel (folders of media, subtitles written next to them). */
+  onOpenBatch?: () => void;
 }
 
 function UpdateStatusIndicator({
@@ -98,6 +100,7 @@ function UpdateStatusIndicator({
 export function TranscriptionHeader({
   onViewSubtitles,
   isSubtitleViewerOpen = false,
+  onOpenBatch,
 }: TranscriptionHeaderProps) {
   const { t } = useTranslation();
   const [isMacOs, setIsMacOs] = React.useState(true);
@@ -135,13 +138,31 @@ export function TranscriptionHeader({
               version={version}
             />
           ) : (
-            <IntegrationStatus />
+            <div className="flex items-center gap-1.5"><IntegrationStatus /></div>
           )}
         </div>
         <div
           className="flex shrink-0 items-center"
           data-tauri-drag-region={isMacOs ? "false" : undefined}
         >
+          {onOpenBatch && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  aria-label={t("batch.title", "Batch transcription")}
+                  onClick={onOpenBatch}
+                >
+                  <ListVideo />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">
+                {t("batch.title", "Batch transcription")}
+              </TooltipContent>
+            </Tooltip>
+          )}
           <SettingsDropdown />
           {onViewSubtitles && !isSubtitleViewerOpen && (
             <Tooltip>

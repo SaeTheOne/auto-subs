@@ -689,5 +689,21 @@
     "addToTimelineFailed": "字幕をタイムラインに追加できませんでした",
     "clipsBlocked": "出力トラックにキャプションを配置できませんでした。「Add to New Track」を試してください。",
     "reformatFailed": "再整形に失敗"
+  },
+  "batch": {
+    "title": "バッチ処理",
+    "description": "フォルダをドロップすると各動画の隣に字幕を保存します。",
+    "addFolder": "フォルダを追加",
+    "addFiles": "ファイルを追加",
+    "usingSettings": "現在のモデルと言語を使用",
+    "empty": "ファイルがありません。フォルダをここにドロップ。",
+    "pending": "待機中",
+    "count": "{{done}} / {{total}}",
+    "finished": "完了: {{done}} 件",
+    "finishedWithErrors": "完了: {{done}}、失敗: {{failed}}",
+    "start": "開始",
+    "runAgain": "もう一度実行",
+    "cancel": "停止",
+    "close": "閉じる"
   }
 }

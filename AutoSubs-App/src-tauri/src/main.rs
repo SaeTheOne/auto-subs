@@ -34,6 +34,7 @@ mod adobe_bridge;
 mod cli;
 mod app_config;
 mod app_data_fs;
+mod batch;
 mod app_paths;
 mod caption_previews;
 mod window_state;
@@ -721,6 +722,7 @@ fn main() {
             app_data_fs::app_fs_remove,
             app_data_fs::app_fs_rename,
             app_data_fs::app_fs_copy,
+            batch::scan_media_files,
             app_config::get_translation_status,
             app_config::reload_translation_config,
             adobe_bridge::send_to_adobe,

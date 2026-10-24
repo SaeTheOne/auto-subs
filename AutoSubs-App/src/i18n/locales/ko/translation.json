@@ -689,5 +689,21 @@
     "addToTimelineFailed": "자막을 타임라인에 추가할 수 없습니다",
     "clipsBlocked": "출력 트랙에 캡션을 배치할 수 없습니다. 'Add to New Track'을 시도해 보세요.",
     "reformatFailed": "서식 변경 실패"
+  },
+  "batch": {
+    "title": "일괄 처리",
+    "description": "폴더를 놓으면 각 영상 옆에 자막을 저장합니다.",
+    "addFolder": "폴더 추가",
+    "addFiles": "파일 추가",
+    "usingSettings": "현재 모델과 언어를 사용",
+    "empty": "파일이 없습니다. 폴더를 여기에 놓으세요.",
+    "pending": "대기 중",
+    "count": "{{done}} / {{total}}",
+    "finished": "완료: {{done}}개",
+    "finishedWithErrors": "완료: {{done}}개, 실패: {{failed}}개",
+    "start": "시작",
+    "runAgain": "다시 실행",
+    "cancel": "중지",
+    "close": "닫기"
   }
 }

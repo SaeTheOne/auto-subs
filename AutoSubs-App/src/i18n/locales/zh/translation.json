@@ -689,5 +689,21 @@
     "addToTimelineFailed": "无法将字幕添加到时间线",
     "clipsBlocked": "无法在输出轨道上放置字幕。请尝试“Add to New Track”。",
     "reformatFailed": "重新排版失败"
+  },
+  "batch": {
+    "title": "批量转写",
+    "description": "拖入文件夹，字幕自动写到每个视频旁边。",
+    "addFolder": "添加文件夹",
+    "addFiles": "添加文件",
+    "usingSettings": "使用当前的模型和语言设置",
+    "empty": "还没有文件，把文件夹拖进来。",
+    "pending": "等待中",
+    "count": "{{done}} / {{total}}",
+    "finished": "完成 {{done}} 个文件",
+    "finishedWithErrors": "完成 {{done}} 个，失败 {{failed}} 个",
+    "start": "开始",
+    "runAgain": "再跑一次",
+    "cancel": "停止",
+    "close": "关闭"
   }
 }
