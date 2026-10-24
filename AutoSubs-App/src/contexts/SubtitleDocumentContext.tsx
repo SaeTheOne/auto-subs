@@ -5,7 +5,7 @@ import { useAdobe } from '@/contexts/AdobeContext';
 import { useIntegration, type Integration } from '@/contexts/IntegrationContext';
 import { getActiveCensorWords } from '@/censor/merge';
 import { open, save } from '@tauri-apps/plugin-dialog';
-import { readTextFile, writeTextFile } from '@tauri-apps/plugin-fs';
+import { readTextFile, writeTextFile } from '@/lib/app-fs';
 import { downloadDir, basename } from '@tauri-apps/api/path';
 import { toast } from 'sonner';
 import i18n from '@/i18n';

@@ -5,7 +5,7 @@ import { TimelineInfo } from '@/types';
 import { requestSequenceInfo, requestAudioExport, requestImportSRT, requestJumpToTime } from '@/api/adobe-api';
 import { getAudioExportDir, getSubtitleDocumentPath, loadSubtitleDocumentSubtitles } from '@/utils/file-utils';
 import { generateSrt } from '@/utils/srt-utils';
-import { writeTextFile } from '@tauri-apps/plugin-fs';
+import { writeTextFile } from '@/lib/app-fs';
 import { useSettingsStore } from '@/stores/settings-store';
 import { useIntegration } from '@/contexts/IntegrationContext';
 

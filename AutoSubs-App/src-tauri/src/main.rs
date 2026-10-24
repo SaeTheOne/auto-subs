@@ -33,7 +33,7 @@ mod resolve_scripts;
 mod adobe_bridge;
 mod cli;
 mod app_config;
-mod app_fs_scope;
+mod app_data_fs;
 mod app_paths;
 mod caption_previews;
 mod window_state;
@@ -469,12 +469,6 @@ fn main() {
                 return Ok(());
             }
 
-            // Transcripts and the audio export folder moved into the portable
-            // data folder, so the webview needs a runtime ACL grant for it: the
-            // static capability scopes cannot name an install-dependent path.
-            // Granted before the window exists so no IPC can race it.
-            crate::app_fs_scope::grant_portable_data_access(app.handle());
-
             // GUI mode: create the main window programmatically (see create_main_window
             // for why it isn't declared in tauri.conf.json).
             create_main_window(app.handle())?;
@@ -718,6 +712,15 @@ fn main() {
             app_paths::get_app_data_dir,
             app_paths::get_data_file,
             app_paths::get_app_config_path,
+            app_data_fs::app_fs_exists,
+            app_data_fs::app_fs_mkdir,
+            app_data_fs::app_fs_read_text,
+            app_data_fs::app_fs_write_text,
+            app_data_fs::app_fs_read_dir,
+            app_data_fs::app_fs_stat,
+            app_data_fs::app_fs_remove,
+            app_data_fs::app_fs_rename,
+            app_data_fs::app_fs_copy,
             app_config::get_translation_status,
             app_config::reload_translation_config,
             adobe_bridge::send_to_adobe,

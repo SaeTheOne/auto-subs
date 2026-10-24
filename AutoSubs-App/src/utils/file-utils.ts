@@ -16,7 +16,7 @@ import {
   rename,
   copyFile,
   remove,
-} from "@tauri-apps/plugin-fs";
+} from "@/lib/app-fs";
 import { platform } from "@tauri-apps/plugin-os";
 import { appDataDir } from "@/lib/app-paths";
 import { Subtitle, Speaker } from "@/types";
