@@ -99,7 +99,7 @@ translation batch (the loader watches size + mtime), no restart needed.
     "fallback": null,
     "concurrency": 2,
     "google": {
-      "endpoint": "https://translate.googleapis.com/translate_a/single"
+      "endpoint": "https://clients5.google.com/translate_a/t"
     },
     "microsoft": {
       "endpoint": "https://api.cognitive.microsofttranslator.com",
@@ -119,7 +119,7 @@ sections later.
 | `provider` | `google` (default, no credentials) or `microsoft` |
 | `fallback` | optional second provider, tried once when the first fails service-wide |
 | `concurrency` | parallel Google requests; clamped to 1..16 (Microsoft batches instead) |
-| `google.endpoint` | override for a mirror/proxy |
+| `google.endpoint` | override for a mirror/proxy. The default is the Chrome side-panel endpoint (`translate_a/t`); the older `translate_a/single` default that earlier builds wrote is migrated automatically, because that frontend answers `429 Too Many Requests` for whole networks |
 | `microsoft.endpoint` | Azure Translator resource endpoint |
 | `microsoft.key` | Azure Translator subscription key (`Ocp-Apim-Subscription-Key`) |
 | `microsoft.region` | resource region, e.g. `eastasia` (`Ocp-Apim-Subscription-Region`) |
@@ -143,8 +143,12 @@ surface them yet).
 
 ### Request shapes
 
-* **Google**: one request per segment, existing retry/backoff policy
-  (429/5xx/transport, 5 attempts, jittered).
+* **Google**: one request per segment against `translate_a/t`
+  (`client=dict-chrome-ex`), falling back to the `translate_a/single` shape when
+  a custom endpoint asks for it; existing retry/backoff policy
+  (429/5xx/transport, 5 attempts, jittered). Both payload shapes are parsed
+  (`["text"]`, `[["text","detected-lang"]]`, and the legacy sentence-chunk
+  array, which is joined).
 * **Microsoft**: `POST {endpoint}/translate?api-version=3.0&to=...[&from=...]`
   with a JSON array of `{ "Text": "..." }` (25 per chunk), honouring
   `Retry-After` on 429. Source `auto` omits `from`, so the service

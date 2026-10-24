@@ -130,7 +130,7 @@ Copy-Item (Join-Path $release 'resources') $portable -Recurse -Force
     "fallback": null,
     "concurrency": 2,
     "google": {
-      "endpoint": "https://translate.googleapis.com/translate_a/single"
+      "endpoint": "https://clients5.google.com/translate_a/t"
     },
     "microsoft": {
       "endpoint": "https://api.cognitive.microsofttranslator.com",

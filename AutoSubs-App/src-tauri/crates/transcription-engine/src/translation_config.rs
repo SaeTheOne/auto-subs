@@ -33,7 +33,12 @@ use std::time::SystemTime;
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
 
-pub const DEFAULT_GOOGLE_ENDPOINT: &str = "https://translate.googleapis.com/translate_a/single";
+pub const DEFAULT_GOOGLE_ENDPOINT: &str = "https://clients5.google.com/translate_a/t";
+/// Endpoint older builds wrote into `config.json`. `translate_a/single` (the
+/// `client=gtx` frontend) is rate limited much more aggressively and returns
+/// 429 to whole networks, so an unmodified file is migrated to the default
+/// above instead of being honoured.
+pub const LEGACY_GOOGLE_ENDPOINT: &str = "https://translate.googleapis.com/translate_a/single";
 pub const DEFAULT_MICROSOFT_ENDPOINT: &str = "https://api.cognitive.microsofttranslator.com";
 
 /// Environment override, mainly for headless runs and tests.
@@ -389,6 +394,15 @@ fn parse_str(text: &str) -> Result<Settings, String> {
         .google
         .endpoint
         .filter(|e| !e.trim().is_empty())
+        .map(|endpoint| {
+            if endpoint.trim() == LEGACY_GOOGLE_ENDPOINT {
+                // Keep old config files working: the endpoint that used to be
+                // the default is the one that now answers 429.
+                DEFAULT_GOOGLE_ENDPOINT.to_string()
+            } else {
+                endpoint
+            }
+        })
         .unwrap_or_else(|| DEFAULT_GOOGLE_ENDPOINT.to_string());
 
     let microsoft = MicrosoftSettings {

@@ -331,9 +331,15 @@ async fn google_one(
     sl: &str,
     tl: &str,
 ) -> Result<String, Failure> {
+    // `translate_a/t` is the response used by the Chrome side-panel frontend
+    // (`dict-chrome-ex`); it answers where `translate_a/single` (`client=gtx`)
+    // returns 429 for whole networks. Both are the same translation backend,
+    // only the query and the payload shape differ.
+    let chrome_ex = endpoint.contains("/translate_a/t");
+
     let mut attempt = 0u32;
     loop {
-        let resp_result = client
+        let request = client
             .get(endpoint)
             .header("sec-ch-ua", "\"Google Chrome\";v=\"129\", \"Not=A?Brand\";v=\"8\", \"Chromium\";v=\"129\"")
             .header("x-browser-year", "2024")
@@ -341,10 +347,15 @@ async fn google_one(
             .header("sec-ch-ua-arch", "\"x86\"")
             .header("sec-ch-ua-bitness", "\"64\"")
             .header("sec-ch-ua-form-factors", "\"Desktop\"")
-            .header("x-browser-copyright", "Copyright 2024 Google LLC. All rights reserved.")
-            .query(&[("client", "gtx"), ("sl", sl), ("tl", tl), ("dt", "t"), ("q", text)])
-            .send()
-            .await;
+            .header("x-browser-copyright", "Copyright 2024 Google LLC. All rights reserved.");
+
+        let request = if chrome_ex {
+            request.query(&[("client", "dict-chrome-ex"), ("sl", sl), ("tl", tl), ("q", text)])
+        } else {
+            request.query(&[("client", "gtx"), ("sl", sl), ("tl", tl), ("dt", "t"), ("q", text)])
+        };
+
+        let resp_result = request.send().await;
 
         match resp_result {
             Ok(resp) => {
@@ -355,7 +366,7 @@ async fn google_one(
                     };
                     let translated = serde_json::from_str::<Value>(&body)
                         .ok()
-                        .and_then(|json| json[0][0][0].as_str().map(str::to_string))
+                        .and_then(|json| parse_google_payload(&json))
                         .unwrap_or_default();
                     return Ok(translated);
                 }
@@ -389,6 +400,39 @@ async fn google_one(
                 continue;
             }
         }
+    }
+}
+
+/// Pull the translation out of either Google payload shape:
+///
+/// * `translate_a/t` with `sl=<lang>`: `["你好"]`
+/// * `translate_a/t` with `sl=auto`: `[["你好","ja"]]` (text + detected code)
+/// * legacy `translate_a/single`: `[[["你好","こんにちは",…], …]]`, one entry per
+///   sentence chunk, which is why the fragments are joined.
+fn parse_google_payload(value: &Value) -> Option<String> {
+    let entries = value.as_array()?;
+    let first = entries.first()?;
+
+    if let Some(text) = first.as_str() {
+        return Some(text.to_string());
+    }
+
+    let chunks = first.as_array()?;
+    // `[["translation","detected-language"]]`
+    if let Some(text) = chunks.first().and_then(|chunk| chunk.as_str()) {
+        return Some(text.to_string());
+    }
+
+    // `[[["fragment","source",…], ["fragment",…]]]`
+    let joined: String = chunks
+        .iter()
+        .filter_map(|chunk| chunk.get(0).and_then(|fragment| fragment.as_str()))
+        .collect();
+
+    if joined.is_empty() {
+        None
+    } else {
+        Some(joined)
     }
 }
 
@@ -595,3 +639,35 @@ pub fn regenerate_words_uniform(seg: &mut Segment) {
 }
 
 // get_translate_languages moved to utils.rs
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parses_translate_a_t_single_language() {
+        let value: Value = serde_json::from_str(r#"["你好"]"#).unwrap();
+        assert_eq!(parse_google_payload(&value).as_deref(), Some("你好"));
+    }
+
+    #[test]
+    fn parses_translate_a_t_auto_detect() {
+        // sl=auto adds the detected language next to the text.
+        let value: Value = serde_json::from_str(r#"[["你好","ja"]]"#).unwrap();
+        assert_eq!(parse_google_payload(&value).as_deref(), Some("你好"));
+    }
+
+    #[test]
+    fn parses_legacy_gtx_sentence_chunks() {
+        let value: Value =
+            serde_json::from_str(r#"[[["你好，","こんにちは、",null,null],["世界。","世界。",null,null]]]"#)
+                .unwrap();
+        assert_eq!(parse_google_payload(&value).as_deref(), Some("你好，世界。"));
+    }
+
+    #[test]
+    fn empty_translation_is_not_an_error() {
+        let value: Value = serde_json::from_str(r#"[""]"#).unwrap();
+        assert_eq!(parse_google_payload(&value).as_deref(), Some(""));
+    }
+}

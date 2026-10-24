@@ -15,7 +15,7 @@ dirs = "5.0"
 regex = "1"
 serde = { version = "1", features = ["derive"] }
 zip = { version = "4.3.0", default-features = false, features = ["deflate"] }
-reqwest = { version = "0.11", default-features = true, features = ["stream"] }
+reqwest = { version = "0.11", default-features = true, features = ["stream", "json"] }
 hound = "3.5"
 tracing = "0.1"
 eyre = "0.6"

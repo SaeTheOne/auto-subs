@@ -444,16 +444,17 @@ fn main() {
 
     builder
         .setup(move |app| {
+            // Initialize backend logging (file + in-memory ring buffer). Logs go to
+            // the log file only, never stdout/stderr, so CLI output stays clean.
+            // Logging comes first so the configuration diagnostics below are
+            // actually captured in the log file.
+            crate::logging::init_logging(&app.handle());
+
             // Portable data root (`<install dir>/AppData`) and
             // `<install dir>/config.json`. This creates the default config on
             // first run and points the translation engine at it, so it has to
-            // happen before logging (which lives in that folder) and before any
-            // transcription/translation work.
+            // happen before any transcription/translation work.
             crate::app_config::init();
-
-            // Initialize backend logging (file + in-memory ring buffer). Logs go to
-            // the log file only, never stdout/stderr, so CLI output stays clean.
-            crate::logging::init_logging(&app.handle());
 
             if headless {
                 // Headless/CLI: never create a window. Hide the macOS dock icon so a
