@@ -147,6 +147,7 @@ pub async fn translate_batch(texts: Vec<String>, from: &str, to: &str) -> Result
     // which makes the translate endpoints throttle much sooner.
     let client = Arc::new(Client::new());
 
+    let mut provider_used = primary;
     let mut outcome = run_provider(primary, &client, &texts, from, to, &settings).await;
 
     if outcome.service_wide_failure() {
@@ -157,6 +158,7 @@ pub async fn translate_batch(texts: Vec<String>, from: &str, to: &str) -> Result
                 reason = outcome.reason.as_deref().unwrap_or("unknown"),
                 "translation provider failed; retrying with the configured fallback"
             );
+            provider_used = fallback;
             outcome = run_provider(fallback, &client, &texts, from, to, &settings).await;
         }
     }
@@ -177,6 +179,16 @@ pub async fn translate_batch(texts: Vec<String>, from: &str, to: &str) -> Result
             "translation: {}/{} segments kept their original text after retries",
             outcome.failed,
             outcome.attempted
+        );
+    } else {
+        // Success is otherwise invisible in the log, which makes "did the
+        // translation step even run?" impossible to answer from a bug report.
+        tracing::info!(
+            provider = provider_used.as_str(),
+            segments = outcome.attempted,
+            from,
+            to,
+            "translation batch complete"
         );
     }
 
