@@ -177,9 +177,9 @@
       "createTrack": "Aucune timeline trouvée"
     },
     "fileDrop": {
-      "aria": "Déposez un fichier audio ici ou cliquez pour sélectionner",
-      "prompt": "Déposez ou cliquez",
-      "supports": "La plupart des formats"
+      "aria": "D?posez des fichiers ou dossiers audio ici, ou cliquez",
+      "prompt": "D?posez fichiers ou dossiers",
+      "supports": "La plupart des formats, dossiers en lot"
     },
     "fileDialog": {
       "mediaFiles": "Fichiers multimédias (pris en charge par ffmpeg)"

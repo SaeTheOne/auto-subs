@@ -30,12 +30,22 @@ import {
  * Runs with the settings currently in the store (model, language, translate,
  * target language, text density...), so there is nothing else to configure here.
  */
+export interface BatchSeed {
+  /** Changes every time the user drops something, so repeats still trigger. */
+  id: number;
+  /** Already-scanned media paths. */
+  paths: string[];
+  autoStart: boolean;
+}
+
 export function BatchDialog({
   open: isOpen,
   onOpenChange,
+  seed,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  seed?: BatchSeed | null;
 }) {
   const { t } = useTranslation();
   const [items, setItems] = React.useState<BatchItem[]>([]);
@@ -43,6 +53,7 @@ export function BatchDialog({
   const [running, setRunning] = React.useState(false);
   const [summary, setSummary] = React.useState<{ done: number; failed: number } | null>(null);
   const cancelledRef = React.useRef(false);
+  const handledSeedRef = React.useRef<number | null>(null);
 
   const translate = useSettingsStore((s) => s.translate);
   const targetLanguage = useSettingsStore((s) => s.targetLanguage);
@@ -122,32 +133,45 @@ export function BatchDialog({
     await addPaths(Array.isArray(picked) ? picked : [picked]);
   };
 
-  const start = async () => {
+  const runPaths = React.useCallback(async (paths: string[]) => {
+    if (paths.length === 0) return;
     const settings = useSettingsStore.getState();
     cancelledRef.current = false;
     setRunning(true);
     setSummary(null);
 
     try {
-      const result = await runBatch(
-        items.map((item) => item.path),
-        settings,
-        {
-          onStatus: (path, status, message) =>
-            setItems((current) =>
-              current.map((item) => (item.path === path ? { ...item, status, message } : item)),
-            ),
-          isCancelled: () => cancelledRef.current,
-        },
-      );
+      const result = await runBatch(paths, settings, {
+        onStatus: (path, status, message) =>
+          setItems((current) =>
+            current.map((item) => (item.path === path ? { ...item, status, message } : item)),
+          ),
+        isCancelled: () => cancelledRef.current,
+      });
       setSummary({ done: result.done, failed: result.failed });
     } catch (error) {
       console.error("Batch run failed:", error);
-      setSummary({ done: 0, failed: items.length });
+      setSummary({ done: 0, failed: paths.length });
     } finally {
       setRunning(false);
     }
-  };
+  }, []);
+
+  const start = () => runPaths(items.map((item) => item.path));
+
+  // A drop on the main drop zone arrives as a seed: queue it and start right
+  // away, so "drag the folder here" needs no second click.
+  React.useEffect(() => {
+    if (!isOpen || !seed) return;
+    if (handledSeedRef.current === seed.id) return;
+    if (running) return;
+    handledSeedRef.current = seed.id;
+
+    void (async () => {
+      await addPaths(seed.paths);
+      if (seed.autoStart) await runPaths(seed.paths);
+    })();
+  }, [isOpen, seed, running, addPaths, runPaths]);
 
   const cancel = async () => {
     cancelledRef.current = true;

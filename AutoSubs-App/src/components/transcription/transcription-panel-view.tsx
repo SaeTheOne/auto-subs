@@ -13,7 +13,8 @@ import type {
   Track,
 } from "@/types";
 import { TranscriptionHeader } from "./transcription-header";
-import { BatchDialog } from "./batch-dialog";
+import { BatchDialog, type BatchSeed } from "./batch-dialog";
+import { scanMediaFiles } from "@/lib/batch-runner";
 import { CompletionStepItem } from "@/components/processing/completion-step-item";
 import { ProcessingStepsList } from "./processing-steps-list";
 import { RunSummaryCard } from "./run-summary";
@@ -121,16 +122,35 @@ export function TranscriptionPanelView({
     let unlisten: (() => void) | undefined;
     (async () => {
       const webview = await getCurrentWebview();
-      unlisten = await webview.onDragDropEvent((event: any) => {
-        if (event.payload.type === "drop") {
-          const files = event.payload.paths as string[] | undefined;
-          if (files && files.length > 0) {
-            const supportedFile = files.find(isSupportedMediaFile);
-            if (supportedFile) {
-              setSelectedFile(supportedFile);
-            }
+      unlisten = await webview.onDragDropEvent(async (event: any) => {
+        if (event.payload.type !== "drop") return;
+
+        const dropped = (event.payload.paths as string[] | undefined) ?? [];
+        if (dropped.length === 0) return;
+
+        // Folders (and multi-selections) fan out into every media file they
+        // contain; `scan_media_files` also accepts a plain file path.
+        const found: string[] = [];
+        for (const path of dropped) {
+          try {
+            found.push(...(await scanMediaFiles(path)));
+          } catch (error) {
+            console.warn("Could not scan dropped item:", path, error);
           }
         }
+
+        const unique = [...new Map(found.map((path) => [path.toLowerCase(), path])).values()];
+        if (unique.length === 0) return;
+
+        if (unique.length === 1 && isSupportedMediaFile(unique[0])) {
+          setSelectedFile(unique[0]);
+          return;
+        }
+
+        // More than one file: run the batch with the current settings and write
+        // the subtitles next to each video.
+        setBatchSeed({ id: Date.now(), paths: unique, autoStart: true });
+        setBatchOpen(true);
       });
     })();
     return () => {
@@ -194,6 +214,7 @@ export function TranscriptionPanelView({
   );
 
   const [batchOpen, setBatchOpen] = React.useState(false);
+  const [batchSeed, setBatchSeed] = React.useState<BatchSeed | null>(null);
 
   const startButtonLabel =
     audioInputMode === "timeline" &&
@@ -209,7 +230,7 @@ export function TranscriptionPanelView({
         isSubtitleViewerOpen={isSubtitleViewerOpen}
         onOpenBatch={() => setBatchOpen(true)}
       />
-      <BatchDialog open={batchOpen} onOpenChange={setBatchOpen} />
+      <BatchDialog open={batchOpen} onOpenChange={setBatchOpen} seed={batchSeed} />
 
       <div className="flex-1 min-h-0 flex flex-col p-3.5 pt-1.5 pb-4">
         {showProcessing && (

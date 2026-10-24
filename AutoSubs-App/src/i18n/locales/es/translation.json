@@ -177,9 +177,9 @@
       "createTrack": "No se encontró línea de tiempo"
     },
     "fileDrop": {
-      "aria": "Suelta un archivo de audio aquí o haz clic para seleccionar",
-      "prompt": "Suelta o haz clic",
-      "supports": "La mayoría de formatos"
+      "aria": "Suelta archivos o carpetas de audio aqu?, o haz clic",
+      "prompt": "Suelta archivos o carpetas",
+      "supports": "Casi todo formato, carpetas en lote"
     },
     "fileDialog": {
       "mediaFiles": "Archivos multimedia (compatibles con ffmpeg)"

@@ -179,9 +179,9 @@
       "createTrack": "No timeline found"
     },
     "fileDrop": {
-      "aria": "Drop audio file here or click to select",
-      "prompt": "Drop file or click",
-      "supports": "Supports most formats"
+      "aria": "Drop audio files or folders here, or click to select",
+      "prompt": "Drop files or folders",
+      "supports": "Most formats, folders run as a batch"
     },
     "fileDialog": {
       "mediaFiles": "Media Files (ffmpeg-supported)"
