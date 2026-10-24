@@ -177,8 +177,8 @@
       "createTrack": "Aucune timeline trouvée"
     },
     "fileDrop": {
-      "aria": "D?posez des fichiers ou dossiers audio ici, ou cliquez",
-      "prompt": "D?posez fichiers ou dossiers",
+      "aria": "Déposez des fichiers ou dossiers audio ici, ou cliquez",
+      "prompt": "Déposez fichiers ou dossiers",
       "supports": "La plupart des formats, dossiers en lot"
     },
     "fileDialog": {

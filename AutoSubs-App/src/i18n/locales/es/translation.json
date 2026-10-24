@@ -177,7 +177,7 @@
       "createTrack": "No se encontró línea de tiempo"
     },
     "fileDrop": {
-      "aria": "Suelta archivos o carpetas de audio aqu?, o haz clic",
+      "aria": "Suelta archivos o carpetas de audio aquí, o haz clic",
       "prompt": "Suelta archivos o carpetas",
       "supports": "Casi todo formato, carpetas en lote"
     },
